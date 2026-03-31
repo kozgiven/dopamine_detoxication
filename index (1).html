@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Detox</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400&family=Cormorant+Garamond:wght@300;400&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --fg: #e8e2d9;
+    --fg-dim: #6b6560;
+    --fg-muted: #3a3835;
+    --bg: #0a0908;
+    --accent: #c9b99a;
+  }
+
+  html, body {
+    width: 100%; height: 100%;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: 'DM Mono', 'Courier New', monospace;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  /* ─── SETUP ─── */
+  #setup {
+    position: fixed; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    transition: opacity 1.2s ease;
+  }
+  #setup.fade-out { opacity: 0; pointer-events: none; }
+
+  .app-label {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-weight: 300;
+    font-size: clamp(11px, 1.5vw, 13px);
+    letter-spacing: 0.35em;
+    color: var(--fg-muted);
+    text-transform: uppercase;
+    margin-bottom: 3rem;
+  }
+
+  .time-builder {
+    display: flex;
+    align-items: center;
+    margin-bottom: 3rem;
+  }
+
+  .unit-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .unit-label {
+    font-size: 10px;
+    letter-spacing: 0.3em;
+    color: var(--fg-muted);
+    text-transform: uppercase;
+  }
+
+  .unit-display {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-weight: 300;
+    font-size: clamp(56px, 10vw, 96px);
+    color: var(--fg);
+    line-height: 1;
+    min-width: 2ch;
+    text-align: center;
+  }
+
+  .unit-controls { display: flex; flex-direction: column; gap: 6px; }
+
+  .ctrl-btn {
+    background: none;
+    border: 0.5px solid var(--fg-muted);
+    color: var(--fg-muted);
+    width: 28px; height: 28px;
+    border-radius: 2px;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+    transition: border-color 0.2s, color 0.2s;
+    font-family: inherit;
+  }
+  .ctrl-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .ctrl-btn:active { transform: scale(0.95); }
+
+  .separator {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-weight: 300;
+    font-size: clamp(40px, 8vw, 72px);
+    color: var(--fg-muted);
+    padding: 0 0.4rem;
+    margin-top: -1.2rem;
+  }
+
+  /* ─── NOISE SELECTOR ─── */
+  .noise-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 2.5rem;
+  }
+
+  .noise-label {
+    font-size: 10px;
+    letter-spacing: 0.3em;
+    color: var(--fg-muted);
+    text-transform: uppercase;
+    margin-right: 0.5rem;
+  }
+
+  .noise-btn {
+    background: none;
+    border: 0.5px solid var(--fg-muted);
+    color: var(--fg-muted);
+    font-family: 'DM Mono', 'Courier New', monospace;
+    font-size: 10px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    padding: 8px 16px;
+    border-radius: 1px;
+    cursor: pointer;
+    transition: border-color 0.2s, color 0.2s, background 0.2s;
+  }
+  .noise-btn.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(201,185,154,0.06);
+  }
+  .noise-btn:hover:not(.active) { border-color: var(--fg-dim); color: var(--fg-dim); }
+
+  /* ─── GO BUTTON ─── */
+  #go-btn {
+    background: none;
+    border: 0.5px solid var(--fg-muted);
+    color: var(--fg-dim);
+    font-family: 'DM Mono', 'Courier New', monospace;
+    font-size: 11px;
+    letter-spacing: 0.4em;
+    text-transform: uppercase;
+    padding: 14px 48px;
+    cursor: pointer;
+    border-radius: 1px;
+    transition: border-color 0.3s, color 0.3s;
+  }
+  #go-btn:hover { border-color: var(--accent); color: var(--accent); }
+  #go-btn:active { transform: scale(0.98); }
+  #go-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  /* ─── DETOX SCREEN ─── */
+  #detox {
+    position: fixed; inset: 0;
+    background: #000;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 1.8s ease;
+  }
+  #detox.active { opacity: 1; pointer-events: all; }
+
+  #countdown {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-weight: 300;
+    font-size: clamp(40px, 12vw, 110px);
+    color: #1a1a18;
+    letter-spacing: 0.08em;
+    line-height: 1;
+    transition: color 2s ease, opacity 1s ease;
+  }
+  #detox.active #countdown { color: #2a2a26; }
+
+  #done-msg {
+    position: absolute;
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-weight: 300;
+    font-size: clamp(16px, 3vw, 26px);
+    color: var(--accent);
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    opacity: 0;
+    transition: opacity 2s ease;
+  }
+
+  .progress-ring {
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+
+  #ring-track { stroke: #111110; }
+  #ring-fill { stroke: #1e1e1c; transition: stroke-dashoffset 1s linear; }
+  #detox.active #ring-track { stroke: #151513; }
+  #detox.active #ring-fill { stroke: #252522; }
+
+  /* ─── NOISE INDICATOR ─── */
+  #noise-indicator {
+    position: fixed;
+    top: 1.5rem; left: 50%;
+    transform: translateX(-50%);
+    font-size: 9px;
+    letter-spacing: 0.35em;
+    color: #1c1c1a;
+    text-transform: uppercase;
+    transition: color 2s ease;
+    pointer-events: none;
+  }
+  #detox.active #noise-indicator { color: #2e2e2a; }
+
+  /* ─── EXIT HINT ─── */
+  #exit-hint {
+    position: fixed;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 9px;
+    letter-spacing: 0.3em;
+    color: #111110;
+    text-transform: uppercase;
+    transition: color 2s ease;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  #exit-hint.visible { color: #252522; }
+  #exit-hint:hover { color: #4a4a44 !important; }
+</style>
+</head>
+<body>
+
+<div id="setup">
+  <p class="app-label">dopamine detox</p>
+
+  <div class="time-builder">
+    <div class="unit-block">
+      <span class="unit-label">hours</span>
+      <span class="unit-display" id="hr-display">00</span>
+      <div class="unit-controls">
+        <button class="ctrl-btn" onclick="adjust('hr',1)">+</button>
+        <button class="ctrl-btn" onclick="adjust('hr',-1)">−</button>
+      </div>
+    </div>
+    <div><div class="separator">:</div></div>
+    <div class="unit-block">
+      <span class="unit-label">minutes</span>
+      <span class="unit-display" id="min-display">25</span>
+      <div class="unit-controls">
+        <button class="ctrl-btn" onclick="adjust('min',5)">+</button>
+        <button class="ctrl-btn" onclick="adjust('min',-5)">−</button>
+      </div>
+    </div>
+    <div><div class="separator">:</div></div>
+    <div class="unit-block">
+      <span class="unit-label">seconds</span>
+      <span class="unit-display" id="sec-display">00</span>
+      <div class="unit-controls">
+        <button class="ctrl-btn" onclick="adjust('sec',10)">+</button>
+        <button class="ctrl-btn" onclick="adjust('sec',-10)">−</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="noise-row">
+    <span class="noise-label">sound</span>
+    <button class="noise-btn active" id="btn-none" onclick="setNoise('none')">silence</button>
+    <button class="noise-btn" id="btn-white" onclick="setNoise('white')">white</button>
+    <button class="noise-btn" id="btn-brown" onclick="setNoise('brown')">brown</button>
+  </div>
+
+  <button id="go-btn" onclick="startDetox()">go</button>
+</div>
+
+<div id="detox">
+  <svg class="progress-ring" width="320" height="320" viewBox="0 0 320 320">
+    <circle id="ring-track" cx="160" cy="160" r="148" fill="none" stroke-width="0.5"/>
+    <circle id="ring-fill" cx="160" cy="160" r="148" fill="none" stroke-width="0.5"
+      stroke-dasharray="930" stroke-dashoffset="930"
+      transform="rotate(-90 160 160)"/>
+  </svg>
+  <div id="countdown">00:00:00</div>
+  <div id="done-msg">detox complete</div>
+</div>
+
+<div id="noise-indicator"></div>
+<div id="exit-hint" onclick="endDetox()">tap to end</div>
+
+<script>
+  let hr = 0, min = 25, sec = 0;
+  let totalSeconds = 0, remaining = 0;
+  let timer = null;
+  let noiseMode = 'none';
+
+  // ── Audio ──
+  let audioCtx = null;
+  let noiseSource = null;
+  let gainNode = null;
+
+  function getAudioCtx() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    return audioCtx;
+  }
+
+  function generateWhiteNoise(ctx) {
+    const bufferSize = ctx.sampleRate * 2;
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+    source.loop = true;
+    return source;
+  }
+
+  function generateBrownNoise(ctx) {
+    const bufferSize = ctx.sampleRate * 2;
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    let last = 0;
+    for (let i = 0; i < bufferSize; i++) {
+      const white = Math.random() * 2 - 1;
+      data[i] = (last + (0.02 * white)) / 1.02;
+      last = data[i];
+      data[i] *= 3.5;
+    }
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+    source.loop = true;
+    return source;
+  }
+
+  function startNoise() {
+    stopNoise();
+    if (noiseMode === 'none') return;
+    const ctx = getAudioCtx();
+    gainNode = ctx.createGain();
+    gainNode.gain.setValueAtTime(0, ctx.currentTime);
+    gainNode.gain.linearRampToValueAtTime(0.35, ctx.currentTime + 2);
+    gainNode.connect(ctx.destination);
+    noiseSource = noiseMode === 'white' ? generateWhiteNoise(ctx) : generateBrownNoise(ctx);
+    noiseSource.connect(gainNode);
+    noiseSource.start();
+  }
+
+  function stopNoise() {
+    if (gainNode && audioCtx) {
+      gainNode.gain.setValueAtTime(gainNode.gain.value, audioCtx.currentTime);
+      gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 1.5);
+    }
+    if (noiseSource) {
+      try { noiseSource.stop(audioCtx.currentTime + 1.5); } catch(e) {}
+      noiseSource = null;
+    }
+    gainNode = null;
+  }
+
+  // ── Noise selector ──
+  function setNoise(mode) {
+    noiseMode = mode;
+    document.querySelectorAll('.noise-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('btn-' + mode).classList.add('active');
+  }
+
+  // ── Time controls ──
+  const pad = n => String(n).padStart(2, '0');
+
+  function adjust(unit, delta) {
+    if (unit === 'hr')  hr  = Math.max(0, Math.min(23, hr + delta));
+    if (unit === 'min') min = Math.max(0, Math.min(55, min + delta));
+    if (unit === 'sec') sec = Math.max(0, Math.min(50, sec + delta));
+    document.getElementById('hr-display').textContent  = pad(hr);
+    document.getElementById('min-display').textContent = pad(min);
+    document.getElementById('sec-display').textContent = pad(sec);
+    document.getElementById('go-btn').disabled = (hr === 0 && min === 0 && sec === 0);
+  }
+
+  // ── Countdown ──
+  const CIRC = 2 * Math.PI * 148;
+
+  function updateCountdown() {
+    const h = Math.floor(remaining / 3600);
+    const m = Math.floor((remaining % 3600) / 60);
+    const s = remaining % 60;
+    document.getElementById('countdown').textContent = `${pad(h)}:${pad(m)}:${pad(s)}`;
+    const frac = totalSeconds > 0 ? (1 - remaining / totalSeconds) : 1;
+    document.getElementById('ring-fill').setAttribute('stroke-dashoffset', CIRC * (1 - frac));
+  }
+
+  function startDetox() {
+    totalSeconds = hr * 3600 + min * 60 + sec;
+    if (totalSeconds === 0) return;
+    remaining = totalSeconds;
+
+    const indicator = document.getElementById('noise-indicator');
+    indicator.textContent = noiseMode !== 'none' ? noiseMode + ' noise' : '';
+
+    document.getElementById('setup').classList.add('fade-out');
+
+    setTimeout(() => {
+      document.getElementById('setup').style.display = 'none';
+      document.getElementById('detox').classList.add('active');
+      document.getElementById('exit-hint').classList.add('visible');
+      document.getElementById('countdown').style.opacity = '1';
+      document.getElementById('done-msg').style.opacity = '0';
+      document.getElementById('ring-fill').setAttribute('stroke-dashoffset', CIRC);
+      updateCountdown();
+      startNoise();
+
+      timer = setInterval(() => {
+        remaining--;
+        if (remaining <= 0) {
+          remaining = 0;
+          clearInterval(timer);
+          stopNoise();
+          document.getElementById('countdown').style.opacity = '0';
+          document.getElementById('done-msg').style.opacity = '1';
+        }
+        updateCountdown();
+      }, 1000);
+    }, 1200);
+  }
+
+  function endDetox() {
+    clearInterval(timer);
+    stopNoise();
+
+    document.getElementById('detox').classList.remove('active');
+    document.getElementById('exit-hint').classList.remove('visible');
+    document.getElementById('noise-indicator').textContent = '';
+
+    setTimeout(() => {
+      document.getElementById('setup').style.display = 'flex';
+      requestAnimationFrame(() => {
+        document.getElementById('setup').classList.remove('fade-out');
+      });
+    }, 300);
+  }
+
+  // init
+  adjust('min', 0);
+</script>
+</body>
+</html>
